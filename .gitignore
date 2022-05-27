@@ -1,0 +1,8 @@
+node_modules
+/src/data-sources/.secrets
+/src/data-sources/.cache
+/dist
+/package
+*.tgz
+.DS_Store
+.npmrc

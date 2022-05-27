@@ -1,0 +1,6 @@
+export { source as torrents } from "./the-pirate-bay"
+export { source as weather } from "./weather"
+export { source as oil } from "./crude-oil"
+export { source as wibor } from "./wibor"
+export { source as fuel } from "./fuel"
+export { source as fx } from "./fx"
