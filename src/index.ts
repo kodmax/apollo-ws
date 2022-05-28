@@ -1,9 +1,9 @@
 import { fuel, fx, oil, torrents, weather, wibor } from "./data-sources"
-import { ApolloDaemon, Cache, CacheEntry } from "./lib";
+import { ApolloWebSocket, Cache, CacheEntry } from "./lib";
 import { KnxLink } from "js-knx"
 import { energy, airQuality } from "./home.knx-schema"
 
-new ApolloDaemon({ cache: new Cache(__dirname + '/data-sources/.cache') }, apollo => {
+new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache') }, apollo => {
     apollo.addDataSource('torrents', torrents)
     apollo.addDataSource('weather', weather)
     apollo.addDataSource('wibor', wibor)

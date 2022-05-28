@@ -35,14 +35,14 @@ type Client = {
     ws: WebSocket,
 }
 
-export class ApolloDaemon {
+export class ApolloWebSocket {
     private vent: EventEmitter = new EventEmitter()
     private chronos: Chronos = new Chronos()
 
     private data: Record<string, Data> = {}
     private feeds: Feed[] = []
 
-    public constructor(private readonly options: ApolloDaemonOptions, init: (instance: ApolloDaemon) => void) {
+    public constructor(private readonly options: ApolloDaemonOptions, init: (instance: ApolloWebSocket) => void) {
         const server = new WebSocketServer({ port: this.options.port || 3678 })
         const clients: Set<Client> = new Set<Client>()
         init(this)

@@ -1,5 +1,5 @@
 {
-  "name": "apollo-daemon",
+  "name": "apollo-ws",
   "version": "1.1.0",
   "description": "",
   "main": "dist/index.js",
