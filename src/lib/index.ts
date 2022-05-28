@@ -70,7 +70,9 @@ export class ApolloWebSocket {
                             feed.cb().then(value => {
                                 if (typeof value !== 'undefined') {
                                     client.ws.send(`FEED ${feed.id} ${JSON.stringify(value)}`, err => {
-                                        this.vent.emit('sys-log', `WebSocket send error: ${err}`)
+                                        if (err) {
+                                            this.vent.emit('sys-log', `WebSocket send error: ${err}`)
+                                        }
                                     })    
                                 }
             
@@ -95,7 +97,9 @@ export class ApolloWebSocket {
             for (const client of clients) {
                 if (client.subscriptions.has(id)) {
                     client.ws.send(`FEED ${id} ${content}`, err => {
-                        this.vent.emit('sys-log', `WebSocket send error: ${err}`)
+                        if (err) {
+                            this.vent.emit('sys-log', `WebSocket send error: ${err}`)
+                        }
                     })    
                 }
             }            
