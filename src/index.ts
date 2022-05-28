@@ -55,7 +55,7 @@ new ApolloDaemon({ cache: new Cache(__dirname + '/data-sources/.cache') }, apoll
                 })
     
                 return async () => {
-                    return cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())
+                    return (await cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())).content
                 }
             })    
         })
@@ -68,7 +68,7 @@ new ApolloDaemon({ cache: new Cache(__dirname + '/data-sources/.cache') }, apoll
                 })
     
                 return async () => {
-                    return cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())
+                    return (await cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())).content
                 }
             })    
         })
@@ -81,7 +81,7 @@ new ApolloDaemon({ cache: new Cache(__dirname + '/data-sources/.cache') }, apoll
                 })
     
                 return async () => {
-                    return cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())
+                    return (await cache.refresh(entry => CacheEntry.age(entry) < 3, async () => await dp.read())).content
                 }
             })    
         })

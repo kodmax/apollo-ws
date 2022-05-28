@@ -30,6 +30,11 @@ export type DataSource = {
     cron: string
 }
 
+type Client = {
+    subscriptions: Set<string>,
+    ws: WebSocket,
+}
+
 export class ApolloDaemon {
     private vent: EventEmitter = new EventEmitter()
     private chronos: Chronos = new Chronos()
@@ -39,26 +44,44 @@ export class ApolloDaemon {
 
     public constructor(private readonly options: ApolloDaemonOptions, init: (instance: ApolloDaemon) => void) {
         const server = new WebSocketServer({ port: this.options.port || 3678 })
-        const clients: Set<WebSocket> = new Set<WebSocket>()
+        const clients: Set<Client> = new Set<Client>()
         init(this)
 
-        server.on("connection", client => {
-            clients.add(client)
-            
-            for (const feed of this.feeds) {
-                feed.cb().then(value => {
-                    if (typeof value !== 'undefined') {
-                        client.send(`feed ${feed.id} ${JSON.stringify(value)}`, err => {
-                            this.vent.emit('ws-error', err)
-                        })    
-                    }
-
-                }).catch(e => {
-                    this.vent.emit('feed-error', e)
-                })
+        server.on("connection", ws => {
+            const client: Client = {
+                ws, subscriptions: new Set<string>()
             }
+            
+            ws.on("message", data => {
+                const msg = data.toString("utf-8")
+                const i = msg.indexOf(' ')
 
-            client.on("close", () => {
+
+                if (msg.substring(0, i) === 'subscribe' && i > 0) {
+                    const requested = new Set<string>(msg.substring(i + 1).split(' '))
+
+                    const topics = this.feeds.filter(feed => requested.has('*') || requested.has(feed.id)).map(feed => feed.id)
+                    topics.forEach(topic => client.subscriptions.add(topic))
+                    
+                    for (const feed of this.feeds) {
+                        if (topics.includes(feed.id)) {
+                            feed.cb().then(value => {
+                                if (typeof value !== 'undefined') {
+                                    client.ws.send(`FEED ${feed.id} ${JSON.stringify(value)}`, err => {
+                                        this.vent.emit('ws-error', err)
+                                    })    
+                                }
+            
+                            }).catch(e => {
+                                this.vent.emit('feed-error', e)
+                            })    
+                        }
+                    }
+                }
+            })
+
+            clients.add(client)
+            ws.on("close", () => {
                 clients.delete(client)
             })
         })
@@ -67,9 +90,11 @@ export class ApolloDaemon {
             const content = JSON.stringify(value)
 
             for (const client of clients) {
-                client.send(`feed ${id} ${content}`, err => {
-                    this.vent.emit('ws-error', err)
-                })
+                if (client.subscriptions.has(id)) {
+                    client.ws.send(`FEED ${id} ${content}`, err => {
+                        this.vent.emit('ws-error', err)
+                    })    
+                }
             }            
         })
     }
