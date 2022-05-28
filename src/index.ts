@@ -4,6 +4,8 @@ import { KnxLink } from "js-knx"
 import { energy, airQuality } from "./home.knx-schema"
 
 new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache') }, apollo => {
+    apollo.addSysLogListener(msg => console.log(msg))
+    
     apollo.addDataSource('torrents', torrents)
     apollo.addDataSource('weather', weather)
     apollo.addDataSource('wibor', wibor)

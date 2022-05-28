@@ -47,11 +47,13 @@ export class ApolloWebSocket {
         const clients: Set<Client> = new Set<Client>()
         init(this)
 
-        server.on("connection", ws => {
+        server.on("connection", (ws, req) => {
             const client: Client = {
                 ws, subscriptions: new Set<string>()
             }
             
+            this.vent.emit('sys-log', `Client connected: ${req.socket.remoteAddress}`)
+
             ws.on("message", data => {
                 const msg = data.toString("utf-8")
                 const i = msg.indexOf(' ')
@@ -68,12 +70,12 @@ export class ApolloWebSocket {
                             feed.cb().then(value => {
                                 if (typeof value !== 'undefined') {
                                     client.ws.send(`FEED ${feed.id} ${JSON.stringify(value)}`, err => {
-                                        this.vent.emit('ws-error', err)
+                                        this.vent.emit('sys-log', `WebSocket send error: ${err}`)
                                     })    
                                 }
             
                             }).catch(e => {
-                                this.vent.emit('feed-error', e)
+                                this.vent.emit('sys-log', `Feed "${feed.id}" refresh error: ${e}`)
                             })    
                         }
                     }
@@ -82,17 +84,18 @@ export class ApolloWebSocket {
 
             clients.add(client)
             ws.on("close", () => {
+                this.vent.emit('sys-log', `Client disconnected: ${req.socket.remoteAddress}`)
                 clients.delete(client)
             })
         })
 
-        this.vent.on('feed', (id, value) => {
+        this.vent.addListener('feed', async (id, value) => {
             const content = JSON.stringify(value)
 
             for (const client of clients) {
                 if (client.subscriptions.has(id)) {
                     client.ws.send(`FEED ${id} ${content}`, err => {
-                        this.vent.emit('ws-error', err)
+                        this.vent.emit('sys-log', `WebSocket send error: ${err}`)
                     })    
                 }
             }            
@@ -102,18 +105,13 @@ export class ApolloWebSocket {
     public addDataSource(id: string, setup: DataSource) {
         this.chronos.addJob(setup.cron, async () => {
             try {
-                this.update(id, await setup.worker(this.options.cache.getEntry(id)))
+                this.data [id] = await setup.worker(this.options.cache.getEntry(id))
+                this.vent.emit('data-update', id)
 
             } catch (e) {
-                this.vent.emit('data-source-error', e)
+                this.vent.emit('sys-log', `DataSource "${id}" refresh error: ${e}`)
             }
         })
-    }
-
-    private update(id: string, data: any) {
-        this.data [id] = data
-
-        this.vent.emit('data-update', id)
     }
 
     public addFeed(id: string, sources: string[], init: FeedInitCallback): void {
@@ -128,12 +126,12 @@ export class ApolloWebSocket {
 
         if (sources.length > 0) {
             this.vent.addListener('data-update', async id => {
-                if (sources.includes(id)) {
+                if (sources.includes(id) && sources.every(id => typeof this.data [id] !== 'undefined')) {
                     try {
                         feed.update(await feed.cb())
     
                     } catch (e) {
-                        this.vent.emit('listener-error', e)
+                        this.vent.emit('sys-log', `Feed "${feed.id}" refresh error: ${e}`)
                     }
                 }
             })    
@@ -142,6 +140,17 @@ export class ApolloWebSocket {
     }
 
     public getData(id: string): Data {
-        return { ...this.data [id] }
+        if (typeof this.data [id] !== 'undefined') {
+            return { ...this.data [id] }
+
+        } else {
+            throw new Error(`Data source "${id}" not available.`)
+        }
+    }
+
+    public addSysLogListener(cb: (msg: string) => void): void {
+        this.vent.addListener('sys-log', async (msg: string) => {
+            cb(msg)
+        })
     }
 }
