@@ -2,26 +2,24 @@ const tablePattern = /<div class="col-md-7">\s*<h2 class="primary-header">Ostatn
 const pricePattern = /<tr>\s*<td class="date">([\d.]+)<\/td>\s*<td class="address">([\s\S]+?)<td class="prize">([\d,]+) zł<\/td>\s*<\/tr>/g
 
 import { CacheEntry, Data, DataSource } from "../lib"
-import { Fetch } from "./fetch"
-import { URL } from "url"
+import { JSDOM } from "jsdom"
+import { fetch } from "../fetch"
+
 
 export const source: DataSource = {
     cron: "0 10 * * *",
     
     worker: async (cache: CacheEntry): Promise<Data> => {
         return cache.refresh(entry => CacheEntry.age(entry) < 60, async () => {
-            return new Fetch(new URL("https://www.autocentrum.pl")).fetch("/stacje-paliw/bp/").then(resp => resp.toString('utf-8')).then(async html => {
-                const prices = {
-                    '95': {},
-                    'ON': {}
-                }
-            
-                for (const [, type, table ] of html.matchAll(tablePattern)) {
-                    if (type in prices) {
-                        const [, date, location, price ] = [...table.matchAll(pricePattern)] [0]
-                        prices [type] = { date, price: price.replace(',', '.') }
-                    }
-                }
+            return await fetch(`https://www.autocentrum.pl/stacje-paliw/bp/`, { accept: 'text/html' }).then(resp => resp.toString('utf-8')).then(async html => {
+                const document = new JSDOM(html).window.document
+
+                const prices = Object.fromEntries(
+                    Array.from(document.querySelectorAll('.last-prices-wrapper .row'))
+                    .map(row => { return { type: row.querySelector('.primary-header strong').textContent, entries: Array.from(row.querySelectorAll('.table-responsive tbody tr')) } })
+                    .map(({ type, entries }) => {return { type, tr: Array.from(entries)[0] }})
+                    .map(({ type, tr }) => { return [ type, { price: tr.querySelector('td.prize').textContent.replace(',', '.').replace(' zł', ''), date: tr.querySelector('td.date').textContent  } ] })
+                    )
             
                 return prices
             })

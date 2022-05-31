@@ -6,9 +6,8 @@ import { EventEmitter } from "events"
 
 export { Cache, CacheEntry }
 
-export type ApolloDaemonOptions = {
+export type ApolloWebSocketOptions = {
     cache: Cache
-
     port?: number
 }
 
@@ -42,7 +41,7 @@ export class ApolloWebSocket {
     private data: Record<string, Data> = {}
     private feeds: Feed[] = []
 
-    public constructor(private readonly options: ApolloDaemonOptions, init: (instance: ApolloWebSocket) => void) {
+    public constructor(private readonly options: ApolloWebSocketOptions, init: (instance: ApolloWebSocket) => void) {
         const server = new WebSocketServer({ port: this.options.port || 3678 })
         const clients: Set<Client> = new Set<Client>()
         init(this)

@@ -1,4 +1,4 @@
-import { DPT_ActiveEnergy, DPT_Alarm, DPT_Date, DPT_DateTime, DPT_Start, DPT_Switch, DPT_Time, DPT_Value_AirQuality, DPT_Value_Humidity, DPT_Value_Power, DPT_Value_Temp } from "js-knx"
+import { DPT_ActiveEnergy, DPT_Alarm, DPT_Date, DPT_DateTime, DPT_Start, DPT_Switch, DPT_Time, DPT_Value_AirQuality, DPT_Value_Humidity, DPT_Value_Power, DPT_Value_Temp, DPT_Value_Frequency, DPT_Value_Electric_Current, DPT_Value_Power_Factor, DPT_Value_Electric_Potential, DPT_Value_ApparentPower } from "js-knx"
 
 export const lights = {
     "Salon i hol": {
@@ -139,9 +139,6 @@ export const energy = {
     "InstantPowerDraw": {
         reading: { address: "5/0/1", dataType: DPT_Value_Power }
     },
-    "Frequency": {
-        reading: { address: "5/1/0" }
-    },
     "Request Readings": {
         command: { address: "5/2/0" }
     },
@@ -153,18 +150,34 @@ export const energy = {
         "Stop": { address: "5/2/4", dataType: DPT_Start },
         "Status": { address: "5/2/5", dataType: DPT_Start },
         "Reading": { address: "5/2/2", dataType: DPT_ActiveEnergy },    
-    }
+    },
+    "Frequency": {
+        reading: { address: "5/0/2", dataType: DPT_Value_Frequency }
+    },
+    "Voltage": {
+        reading: { address: "5/0/3", dataType: DPT_Value_Electric_Potential}
+    },
+    "Current": {
+        reading: { address: "5/0/4", dataType: DPT_Value_Electric_Current}
+    },
+    "Power Factor tg φ": {
+        reading: { address: "5/0/5", dataType: DPT_Value_Power_Factor}
+    },
+    "Crest Factor": {
+        reading: { address: "5/0/6", dataType: DPT_Value_Power_Factor}
+    },
+    "Passive Power": {
+        reading: { address: "5/0/7", dataType: DPT_Value_ApparentPower }
+    },
 }
 
 export const temp = {
     "Podloga lazienka temperatura": { address: "13/0/2", dataType: DPT_Value_Temp },
     "Tempertura Salon": { address: "15/0/0", dataType: DPT_Value_Temp },
-    "Lazienka": { address: "15/0/1", dataType: DPT_Value_Temp },
-    "Sypialnia przy loggi": { address: "15/0/2", dataType: DPT_Value_Temp },
     "Sypialnia sufit": { address: "15/0/4", dataType: DPT_Value_Temp },
-    "Sypialnia lozko lewa": { address: "15/0/6", dataType: DPT_Value_Temp },
-    "Sypialnia sofa?": { address: "15/0/7", dataType: DPT_Value_Temp },
-    "Lazienka wlacznik": { address: "15/0/8", dataType: DPT_Value_Temp },
+    "Sypialnia przy loggi": { address: "15/0/6", dataType: DPT_Value_Temp },
+    "Salon sofa": { address: "15/0/7", dataType: DPT_Value_Temp },
+    "Lazienka": { address: "15/0/8", dataType: DPT_Value_Temp },
     "Sypialnia hol": { address: "15/0/9", dataType: DPT_Value_Temp },
 }
 
@@ -179,6 +192,9 @@ export const airQuality = {
         reading: { address: "15/0/5", dataType: DPT_Value_Humidity },
         alertHigh: { address: "15/1/3", dataType: DPT_Alarm },
         alertLow: { address: "15/1/4", dataType: DPT_Alarm }
+    },
+    "Punkt rosy": {
+        reading: { address: "15/0/10", dataType: DPT_Value_Temp },
     }
 }
 
