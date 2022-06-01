@@ -8,6 +8,13 @@ export type CacheData = {
     content?: any
 }
 
+export enum CacheAgeUnit {
+    SECONDS = 1,
+    MINUTES = 60,
+    HOURS = 3600,
+    DAYS = 86400
+}
+
 export class CacheEntry {
     private memcache?: CacheData
 
@@ -46,8 +53,8 @@ export class CacheEntry {
         }
     }
 
-    public static age(entry: CacheData): number {
-        return (new Date().getTime() - entry.timestamp) / 1000
+    public static age(entry: CacheData, unit: CacheAgeUnit = CacheAgeUnit.SECONDS): number {
+        return (new Date().getTime() - entry.timestamp) / 1000 / unit
     }
     
     public async refresh (isFresh: (entry: CacheData) => boolean, update: () => Promise<any>): Promise<Data> {

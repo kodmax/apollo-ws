@@ -1,10 +1,10 @@
-import { Cache, CacheEntry } from "./cache"
+import { Cache, CacheEntry, CacheAgeUnit } from "./cache"
 import { Chronos } from "./chronos"
 
 import { WebSocket, WebSocketServer } from "ws"
 import { EventEmitter } from "events"
 
-export { Cache, CacheEntry }
+export { Cache, CacheEntry, CacheAgeUnit }
 
 export type ApolloWebSocketOptions = {
     cache: Cache
