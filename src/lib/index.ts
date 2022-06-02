@@ -20,7 +20,7 @@ export type Feed = {
 }
 
 export type Data = {
-    fresh: boolean
+    fromCache: boolean
     content: any
 }
 

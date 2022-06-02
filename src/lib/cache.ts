@@ -53,37 +53,24 @@ export class CacheEntry {
         }
     }
 
-    public static age(entry: CacheData, unit: CacheAgeUnit = CacheAgeUnit.SECONDS): number {
+    public static age(entry: CacheData, unit: CacheAgeUnit): number {
         return (new Date().getTime() - entry.timestamp) / 1000 / unit
     }
     
     public async refresh (isFresh: (entry: CacheData) => boolean, update: () => Promise<any>): Promise<Data> {
         const entry = this.memcache || await this.read()
     
-        try {
-            if (entry.exists && isFresh(entry)) {
-                return {
-                    content: entry.content,
-                    fresh: true
-                }
-    
-            } else {
-                const content = await update()
-                this.write(content)
+        if (entry.exists && isFresh(entry)) {
+            return {
+                content: entry.content,
+                fromCache: true
+            }
 
-                return { fresh: true, content }
-            }
-        
-        } catch (e) {
-            if (entry.exists) {
-                return {
-                    content: entry.content,
-                    fresh: false
-                }
-    
-            } else {
-                throw e
-            }
+        } else {
+            const content = await update()
+            this.write(content)
+
+            return { fromCache: false, content }
         }
     }
 }
