@@ -13,7 +13,7 @@ export type ApolloWebSocketOptions = {
     port?: number
 }
 
-export type FeedCallback = (data: any[]) => any
+export type FeedCallback = (...data: any[]) => any
 export type Feed = {
     sources: string[],
     cb: FeedCallback,
@@ -107,7 +107,7 @@ export class ApolloWebSocket {
 
     private async feed(feed: Feed): Promise<any> {
         const data = await Promise.all(feed.sources.map(id => this.dataSources [id].getData()))
-        return await feed.cb(data)
+        return await feed.cb.apply(undefined, data)
     }
 
     public addFeed(id: string, sources: string[], cb: FeedCallback): void {

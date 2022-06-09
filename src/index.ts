@@ -11,19 +11,19 @@ new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache')}, asy
     await apollo.addDataSource(b)
     await apollo.addDataSource(c)
 
-    apollo.addFeed('a', [ 'a' ], ([ x ]: any[]) => {
+    apollo.addFeed('a', [ 'a' ], (x) => {
         return x
     })
 
-    apollo.addFeed('b', [ 'b' ], ([ x ]: any[]) => {
+    apollo.addFeed('b', [ 'b' ], (x) => {
         return x
     })
 
-    apollo.addFeed('c', [ 'c' ], ([ x ]: any[]) => {
+    apollo.addFeed('c', [ 'c' ], (x) => {
         return x
     })
 
-    apollo.addFeed('d', ['a', 'b', 'c'], ([ a, b, c ]: any[]) => {
-        return [ a, b, c ]
+    apollo.addFeed('d', ['a', 'b', 'c'], (x, y, z) => {
+        return [ x, y, z ]
     })
 })    
