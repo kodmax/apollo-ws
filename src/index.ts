@@ -11,9 +11,7 @@ new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache')}, asy
     await apollo.addDataSource(b)
     await apollo.addDataSource(c)
 
-    apollo.addFeed('a', [ 'a' ], (x) => {
-        return x
-    })
+    apollo.addFeed('a', [ 'a' ])
 
     apollo.addFeed('b', [ 'b' ], (x) => {
         return x
