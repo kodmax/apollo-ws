@@ -3,30 +3,20 @@ import { Chronos } from "./chronos"
 
 import { WebSocket, WebSocketServer } from "ws"
 import { EventEmitter } from "events"
+import { DataSource, DataSourceDefinition } from "./data-source"
 
 export { Cache, CacheEntry, CacheAgeUnit }
+export { DataSourceDefinition }
 
 export type ApolloWebSocketOptions = {
     cache: Cache
     port?: number
 }
 
-export type FeedInitCallback = (update: (content: any) => void, cache: CacheEntry) => () => Promise<any>
-export type DataWorker = (cache: CacheEntry) => Promise<Data>
-
+export type FeedCallback = (data: any[]) => any
 export type Feed = {
-    cb: () => Promise<any>,
-    id: string,
-}
-
-export type Data = {
-    fromCache: boolean
-    content: any
-}
-
-export type DataSource = {
-    worker: DataWorker
-    cron: string
+    sources: string[],
+    cb: FeedCallback,
 }
 
 type Client = {
@@ -37,38 +27,33 @@ type Client = {
 export class ApolloWebSocket {
     private vent: EventEmitter = new EventEmitter()
     private chronos: Chronos = new Chronos()
+    private dataSources: Record<string, DataSource<any>> = {}
+    private feeds: Record<string, Feed> = {}
 
-    private data: Record<string, Data> = {}
-    private feeds: Feed[] = []
+    public constructor(private readonly options: ApolloWebSocketOptions, init: (instance: ApolloWebSocket) => Promise<void>) {        
+        init(this).then(() => {
+            const server = new WebSocketServer({ port: this.options.port || 3678 })
+            const clients: Set<Client> = new Set<Client>()
 
-    public constructor(private readonly options: ApolloWebSocketOptions, init: (instance: ApolloWebSocket) => void) {
-        const server = new WebSocketServer({ port: this.options.port || 3678 })
-        const clients: Set<Client> = new Set<Client>()
-        init(this)
-
-        server.on("connection", (ws, req) => {
-            const client: Client = {
-                ws, subscriptions: new Set<string>()
-            }
-            
-            this.vent.emit('sys-log', `Client connected: ${req.socket.remoteAddress}`)
-
-            ws.on("message", data => {
-                const msg = data.toString("utf-8")
-                const i = msg.indexOf(' ')
-
-
-                if (msg.substring(0, i) === 'subscribe' && i > 0) {
-                    const requested = new Set<string>(msg.substring(i + 1).split(' '))
-
-                    const topics = this.feeds.filter(feed => requested.has('*') || requested.has(feed.id)).map(feed => feed.id)
-                    topics.forEach(topic => client.subscriptions.add(topic))
-                    
-                    for (const feed of this.feeds) {
-                        if (topics.includes(feed.id)) {
-                            feed.cb().then(value => {
+            server.on("connection", (ws, req) => {
+                const client: Client = {
+                    ws, subscriptions: new Set<string>()
+                }
+                
+                this.vent.emit('sys-log', `Client connected: ${req.socket.remoteAddress}`)
+    
+                ws.on("message", data => {
+                    const msg = data.toString("utf-8")
+                    const i = msg.indexOf(' ')
+    
+                    if (msg.substring(0, i) === 'subscribe' && i > 0) {
+                        const topics = new Set<string>(msg.substring(i + 1).split(' '))
+                        topics.forEach(topic => client.subscriptions.add(topic))
+                        
+                        for (const id of Object.keys(this.feeds).filter(id => topics.has('*') || topics.has(id))) {
+                            this.feed(this.feeds [id]).then(value => {
                                 if (typeof value !== 'undefined') {
-                                    client.ws.send(`FEED ${feed.id} ${JSON.stringify(value)}`, err => {
+                                    client.ws.send(`FEED ${id} ${JSON.stringify(value)}`, err => {
                                         if (err) {
                                             this.vent.emit('sys-log', `WebSocket send error: ${err}`)
                                         }
@@ -76,75 +61,76 @@ export class ApolloWebSocket {
                                 }
             
                             }).catch(e => {
-                                this.vent.emit('sys-log', `Feed "${feed.id}" refresh error: ${e}`)
+                                this.vent.emit('sys-log', `Feed "${id}" refresh error: ${e}`)
                             })    
                         }
                     }
-                }
+                })
+    
+                clients.add(client)
+                ws.on("close", () => {
+                    this.vent.emit('sys-log', `Client disconnected: ${req.socket.remoteAddress}`)
+                    clients.delete(client)
+                })
             })
 
-            clients.add(client)
-            ws.on("close", () => {
-                this.vent.emit('sys-log', `Client disconnected: ${req.socket.remoteAddress}`)
-                clients.delete(client)
+            this.vent.addListener('feed', async (id, value) => {
+                const content = JSON.stringify(value)
+    
+                for (const client of clients) {
+                    if (client.subscriptions.has(id)) {
+                        client.ws.send(`FEED ${id} ${content}`, err => {
+                            if (err) {
+                                this.vent.emit('sys-log', `WebSocket send error: ${err}`)
+                            }
+                        })    
+                    }
+                }            
             })
-        })
-
-        this.vent.addListener('feed', async (id, value) => {
-            const content = JSON.stringify(value)
-
-            for (const client of clients) {
-                if (client.subscriptions.has(id)) {
-                    client.ws.send(`FEED ${id} ${content}`, err => {
-                        if (err) {
-                            this.vent.emit('sys-log', `WebSocket send error: ${err}`)
-                        }
-                    })    
-                }
-            }            
         })
     }
 
-    public addDataSource(id: string, setup: DataSource) {
-        this.chronos.addJob(setup.cron, async () => {
+    public async addDataSource<T>(source: DataSourceDefinition<T>): Promise<void> {
+        this.dataSources [source.id] = new DataSource(source, this.dataSources, await this.options.cache.getEntry(source.id))
+
+        this.chronos.addJob(source.cron, async () => {
             try {
-                this.data [id] = await setup.worker(this.options.cache.getEntry(id))
-                this.vent.emit('data-update', id)
+                await this.dataSources [source.id].getData(true)
+                this.vent.emit('data-update', source.id)
 
             } catch (e) {
-                this.vent.emit('sys-log', `DataSource "${id}" refresh error: ${e}`)
+                this.vent.emit('sys-log', `DataSource "${source.id}" refresh error: ${e}`)
+                throw e
             }
         })
     }
 
-    public addFeed(id: string, sources: string[], init: FeedInitCallback): void {
-        const update = (content: any) => {
-            if (typeof content !== 'undefined') {
-                this.vent.emit('feed', id, content)
-            }
-        }
-
-        const feed = { id, cb: init(update, this.options.cache.getEntry()), update }
-        this.feeds.push(feed)
-
-        if (sources.length > 0) {
-            this.vent.addListener('data-update', async id => {
-                if (sources.includes(id) && sources.every(id => typeof this.data [id] !== 'undefined')) {
-                    try {
-                        feed.update(await feed.cb())
-    
-                    } catch (e) {
-                        this.vent.emit('sys-log', `Feed "${feed.id}" refresh error: ${e}`)
-                    }
-                }
-            })    
-        }
-
+    private async feed(feed: Feed): Promise<any> {
+        const data = await Promise.all(feed.sources.map(id => this.dataSources [id].getData()))
+        return await feed.cb(data)
     }
 
-    public getData(id: string): Data {
-        if (typeof this.data [id] !== 'undefined') {
-            return { ...this.data [id] }
+    public addFeed(id: string, sources: string[], cb: FeedCallback): void {
+        this.feeds [id] = { sources, cb }
+
+        this.vent.addListener('data-update', async id => {
+            if (sources.includes(id)) {
+                try {
+                    const content = await this.feed(this.feeds [id])
+                    if (typeof content !== 'undefined') {
+                        this.vent.emit('feed', id, content)
+                    }
+
+                } catch (e) {
+                    this.vent.emit('sys-log', `Feed "${id}" refresh error: ${e}`)
+                }
+            }
+        })    
+    }
+
+    public async getData(id: string): Promise<any> {
+        if (typeof this.dataSources [id] !== 'undefined') {
+            return this.dataSources [id].getData()
 
         } else {
             throw new Error(`Data source "${id}" not available.`)

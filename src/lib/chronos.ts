@@ -71,7 +71,7 @@ export class Chronos {
         const dm = now.getDate()
         const dw = now.getDay()
 
-        for (const job of this.jobs) {
+        for (const job of this.jobs.filter(job => job.state !== JobState.RUNNING)) {
             if (job.when [0].includes(nn) && job.when [1].includes(hh) && job.when [2].includes(dm) && job.when [3].includes(mm) && job.when [4].includes(dw)) {
                 job.worker().then(() => job.state = JobState.IDLE ).catch(() => job.state = JobState.ERROR)
                 job.state = JobState.RUNNING
@@ -83,15 +83,11 @@ export class Chronos {
 
     public addJob(when: string, worker: Worker) {
         const [ nn, hh, dm, mm, dw ] = when.split(/\s/)
-        const job = {
+        
+        this.jobs.push({
             when: [decode(nn, 59), decode(hh, 23), decode(dm, 31, 1), decode(mm, 12, 1), decode(dw, 6)],
             state: JobState.IDLE,
             worker
-        }
-
-        job.worker().then(() => job.state = JobState.IDLE ).catch(() => job.state = JobState.ERROR)
-        job.state = JobState.RUNNING
-
-        this.jobs.push(job)
+        })
     }
 }
