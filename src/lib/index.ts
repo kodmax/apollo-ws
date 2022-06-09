@@ -98,16 +98,18 @@ export class ApolloWebSocket {
             this.vent.emit('data-update', source.id)
         })
 
-        this.chronos.addJob(source.cron, async () => {
-            try {
-                await this.dataSources [source.id].getData(true)
-                this.vent.emit('data-update', source.id)
-
-            } catch (e) {
-                this.vent.emit('sys-log', `DataSource "${source.id}" refresh error: ${e}`)
-                throw e
-            }
-        })
+        if (source.cron) {
+            this.chronos.addJob(source.cron, async () => {
+                try {
+                    await this.dataSources [source.id].getData(true)
+                    this.vent.emit('data-update', source.id)
+    
+                } catch (e) {
+                    this.vent.emit('sys-log', `DataSource "${source.id}" refresh error: ${e}`)
+                    throw e
+                }
+            })    
+        }
     }
 
     private async feed(feed: Feed): Promise<any> {

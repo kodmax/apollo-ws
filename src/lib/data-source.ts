@@ -3,12 +3,12 @@ import { CachedSnapshot, CacheEntry } from "./cache"
 export type DataSourceDefinition<T> = {
     expired: (cache: CachedSnapshot<T>) => boolean
     worker: (...dependencies: any[]) => Promise<T>
-    cron: string
     id: string
 
     update?: (push: (cotent: T) => void) => void
     dependencies?: string[]
     volatile?: boolean
+    cron?: string
 }
 
 export class DataSource<T> {
