@@ -3,10 +3,12 @@ import { CachedSnapshot, CacheEntry } from "./cache"
 export type DataSourceDefinition<T> = {
     expired: (cache: CachedSnapshot<T>) => boolean
     worker: (...dependencies: any[]) => Promise<T>
-
-    dependencies: string[]
     cron: string
     id: string
+
+    update?: (push: (cotent: T) => void) => void
+    dependencies?: string[]
+    volatile?: boolean
 }
 
 export class DataSource<T> {
@@ -14,8 +16,12 @@ export class DataSource<T> {
     private resolving: boolean = false
     private promise: Promise<T>
 
-    public constructor(private readonly definition: DataSourceDefinition<T>, private readonly sources: Record<string, DataSource<any>>, private readonly cache: CacheEntry<T>) {
-        this.snapshot = cache.getSnapshot()        
+    public constructor(private readonly definition: DataSourceDefinition<T>, private readonly sources: Record<string, DataSource<any>>, private readonly cache: CacheEntry<T>, push: (cotent: T) => void) {
+        this.snapshot = cache.getSnapshot()
+        
+        if (definition.update) {
+            definition.update(push)
+        }
     }
 
     public async getData(forceRefresh: boolean = false): Promise<T> {
@@ -31,13 +37,15 @@ export class DataSource<T> {
                 
                 try {
                     const aux = []
-                    for (const id of this.definition.dependencies) {
-                        if (id in this.sources) {
-                            aux.push(await this.sources [id].getData())
-        
-                        } else {
-                            throw new Error('Data source dependency not registered: ' + id)
-                        }
+                    if (this.definition.dependencies) {
+                        for (const id of this.definition.dependencies) {
+                            if (id in this.sources) {
+                                aux.push(await this.sources [id].getData())
+            
+                            } else {
+                                throw new Error('Data source dependency not registered: ' + id)
+                            }
+                        }    
                     }
         
                     const content = await this.definition.worker.apply(undefined, aux)

@@ -76,9 +76,9 @@ export class ApolloWebSocket {
 
             this.vent.addListener('feed', async (id, value) => {
                 const content = JSON.stringify(value)
-    
+
                 for (const client of clients) {
-                    if (client.subscriptions.has(id)) {
+                    if (client.subscriptions.has('*') || client.subscriptions.has(id)) {
                         client.ws.send(`FEED ${id} ${content}`, err => {
                             if (err) {
                                 this.vent.emit('sys-log', `WebSocket send error: ${err}`)
@@ -91,7 +91,12 @@ export class ApolloWebSocket {
     }
 
     public async addDataSource<T>(source: DataSourceDefinition<T>): Promise<void> {
-        this.dataSources [source.id] = new DataSource(source, this.dataSources, await this.options.cache.getEntry(source.id))
+        const cache = await this.options.cache.getEntry(source.volatile ? null : source.id)
+        this.dataSources [source.id] = new DataSource(source, this.dataSources, cache, (content: T) => {
+            cache.write(content)
+
+            this.vent.emit('data-update', source.id)
+        })
 
         this.chronos.addJob(source.cron, async () => {
             try {
@@ -110,19 +115,19 @@ export class ApolloWebSocket {
         return await feed.cb ? feed.cb.apply(undefined, data) : data [0]
     }
 
-    public addFeed(id: string, sources: string[], cb?: FeedCallback): void {
-        this.feeds [id] = { sources, cb }
+    public addFeed(feedId: string, sources: string[], cb?: FeedCallback): void {
+        this.feeds [feedId] = { sources, cb }
 
-        this.vent.addListener('data-update', async id => {
-            if (sources.includes(id)) {
+        this.vent.addListener('data-update', async sourceId => {
+            if (sources.includes(sourceId)) {
                 try {
-                    const content = await this.feed(this.feeds [id])
+                    const content = await this.feed(this.feeds [feedId])
                     if (typeof content !== 'undefined') {
-                        this.vent.emit('feed', id, content)
+                        this.vent.emit('feed', feedId, content)
                     }
 
                 } catch (e) {
-                    this.vent.emit('sys-log', `Feed "${id}" refresh error: ${e}`)
+                    this.vent.emit('sys-log', `Feed "${feedId}" refresh error: ${e}`)
                 }
             }
         })    
