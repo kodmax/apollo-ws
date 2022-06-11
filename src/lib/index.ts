@@ -51,18 +51,7 @@ export class ApolloWebSocket {
                         topics.forEach(topic => client.subscriptions.add(topic))
                         
                         for (const id of Object.keys(this.feeds).filter(id => topics.has('*') || topics.has(id))) {
-                            this.feed(this.feeds [id]).then(value => {
-                                if (typeof value !== 'undefined') {
-                                    client.ws.send(`FEED ${id} ${JSON.stringify(value)}`, err => {
-                                        if (err) {
-                                            this.vent.emit('sys-log', `WebSocket send error: ${err}`)
-                                        }
-                                    })    
-                                }
-            
-                            }).catch(e => {
-                                this.vent.emit('sys-log', `Feed "${id}" refresh error: ${e}`)
-                            })    
+                            this.feed(id)
                         }
                     }
                 })
@@ -112,9 +101,19 @@ export class ApolloWebSocket {
         }
     }
 
-    private async feed(feed: Feed): Promise<any> {
+    private async feed(feedId: string): Promise<any> {
+        const feed = this.feeds [feedId]
         const data = await Promise.all(feed.sources.map(id => this.dataSources [id].getData()))
-        return await feed.cb ? feed.cb.apply(undefined, data) : data [0]
+        try {
+            const content = await feed.cb ? feed.cb.apply(undefined, data) : data [0]
+
+            if (typeof content !== 'undefined') {
+                this.vent.emit('feed', feedId, content)
+            }
+
+        } catch (e) {
+            this.vent.emit('sys-log', `Feed "${feedId}" refresh error: ${e}`)
+        }
     }
 
     public addFeed(feedId: string, sources: string[], cb?: FeedCallback): void {
@@ -123,7 +122,7 @@ export class ApolloWebSocket {
         this.vent.addListener('data-update', async sourceId => {
             if (sources.includes(sourceId)) {
                 try {
-                    const content = await this.feed(this.feeds [feedId])
+                    const content = await this.feed(feedId)
                     if (typeof content !== 'undefined') {
                         this.vent.emit('feed', feedId, content)
                     }
