@@ -24,7 +24,6 @@ export const CronMonth = {
     Dec: 12
 }
 
-const pattern = /^\*|\d+$/
 export function decode(item: string, min: number, max: number, names: Record<string, number> = {}): number[] {
     const values = []
 

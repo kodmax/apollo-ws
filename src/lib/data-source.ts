@@ -6,7 +6,7 @@ export type DataSourceDefinition<T> = {
     worker: (...dependencies: any[]) => Promise<T>
     id: string
 
-    update?: (push: (cotent: T) => void, err: (e: Error) => void) => void
+    update?: (push: (content: T) => void, err: (e: Error) => void) => void
     dependencies?: string[]
     volatile?: boolean
     cron?: string
@@ -17,7 +17,7 @@ export class DataSource<T> {
     private resolving: boolean = false
     private promise: Promise<T>
 
-    public constructor(private readonly definition: DataSourceDefinition<T>, private readonly sources: Record<string, DataSource<any>>, private readonly cache: CacheEntry<T>, private readonly vent: EventEmitter, push: (cotent: T) => void) {
+    public constructor(private readonly definition: DataSourceDefinition<T>, private readonly sources: Record<string, DataSource<any>>, private readonly cache: CacheEntry<T>, private readonly vent: EventEmitter, push: (content: T) => void) {
         this.snapshot = cache.getSnapshot()
         
         if (definition.update) {

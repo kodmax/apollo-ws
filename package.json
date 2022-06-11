@@ -1,9 +1,10 @@
 {
   "name": "apollo-ws",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "",
   "main": "dist/index.js",
   "scripts": {
+    "lint": "eslint .",
     "test": "npx jest"
   },
   "author": "Marcin Malinowski <mm.kodmax@gmail.com>",
@@ -16,6 +17,7 @@
     "@typescript-eslint/eslint-plugin": "^5.27.1",
     "@typescript-eslint/parser": "^5.27.1",
     "eslint": "^8.17.0",
+    "eslint-plugin-jest": "^26.5.3",
     "js-knx": "^2.1.0",
     "jsdom": "^19.0.0",
     "ts-jest": "^28.0.4",

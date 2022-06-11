@@ -56,9 +56,13 @@ export class ApolloWebSocket {
                         
                         this.vent.emit('sys-log', `Client <${client.socket.remoteAddress}> requests subscription of [ ${[...topics.values()]} ].`)
 
+                        const updates: Promise<void>[] = []
                         for (const feedId of Object.keys(this.feeds).filter(id => topics.has('*') || topics.has(id))) {
                             this.vent.emit('sys-log', `Feed <${feedId}> update attempt due to client <${client.socket.remoteAddress}> subscription`)
-                            this.feed(feedId)
+                            updates.push(this.feed(feedId).catch(e => {
+                                this.vent.emit('sys-error', `Feed <${feedId}> update attempt failed: ${e}`, e)
+                                return e
+                            }))
                         }
                     }
                 })
@@ -95,6 +99,9 @@ export class ApolloWebSocket {
                     this.vent.emit('sys-error', `Feed <${id}> broadcast error: ${e}`)
                 }
             })
+
+        }).catch(e => {
+            this.vent.emit('sys-error', `Error during initialization of ApolloWebSocket: ${e}`, e)
         })
     }
 
@@ -140,12 +147,12 @@ export class ApolloWebSocket {
     public addFeed(feedId: string, sources: string[], cb?: FeedCallback): void {
         this.feeds [feedId] = { sources, cb }
 
-        this.vent.addListener('data-update', async sourceId => {
+        this.vent.addListener('data-update', async (sourceId: string) => {
             if (sources.includes(sourceId)) {
                 try {
                     this.vent.emit('sys-log', `Feed <${feedId}> update attempt due to data source <${sourceId}> update`)
 
-                    const content = await this.feed(feedId)
+                    const content: any = await this.feed(feedId)
                     if (typeof content !== 'undefined') {
                         this.vent.emit('feed', feedId, content)
                     }
@@ -157,24 +164,11 @@ export class ApolloWebSocket {
         })    
     }
 
-    public async getData(id: string): Promise<any> {
-        if (typeof this.dataSources [id] !== 'undefined') {
-            return this.dataSources [id].getData()
-
-        } else {
-            throw new Error(`Data source <${id}> not registered.`)
-        }
-    }
-
     public addSysErrorListener<E extends Error>(cb: (msg: string, e: E) => void): void {
-        this.vent.addListener('sys-error', async (msg: string, e: E) => {
-            cb(msg, e)
-        })
+        this.vent.addListener('sys-error', cb)
     }
 
     public addSysLogListener(cb: (msg: string) => void): void {
-        this.vent.addListener('sys-log', async (msg: string) => {
-            cb(msg)
-        })
+        this.vent.addListener('sys-log', cb)
     }
 }
