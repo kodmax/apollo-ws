@@ -15,16 +15,19 @@ type Job = {
 }
 
 export class Chronos {
-    private readonly interval: number
     private jobs: Job[] = []
 
     public constructor() {
-        this.interval = 60000
         this.next()
     }
 
     private next(): void {
-        setTimeout(() => this.tick(new Date()), this.interval - new Date().getTime() % this.interval)
+        const interval = 60000
+
+        /**
+         * Not more often than once a minute. Each tick is adjusted to hit the start of the next minute
+         */
+        setTimeout(() => this.tick(new Date()), interval - new Date().getTime() % interval)
     }
 
     private tick(now: Date): void {
@@ -36,8 +39,13 @@ export class Chronos {
 
         for (const job of this.jobs.filter(job => job.state !== JobState.RUNNING)) {
             if (job.when [0].includes(nn) && job.when [1].includes(hh) && job.when [2].includes(dm) && job.when [3].includes(mm) && job.when [4].includes(dw)) {
-                job.worker().then(() => job.state = JobState.IDLE ).catch(() => job.state = JobState.ERROR)
+
                 job.state = JobState.RUNNING
+
+                /**
+                 * Exceptions are silently ignored. They should be dealt with outside of Chronos, in the jobs themselves.
+                 */
+                job.worker().then(() => job.state = JobState.IDLE ).catch(() => job.state = JobState.ERROR)
             }
         }
 

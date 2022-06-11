@@ -28,7 +28,6 @@ const pattern = /^\*|\d+$/
 export function decode(item: string, min: number, max: number, names: Record<string, number> = {}): number[] {
     const values = []
 
-    console.log('decoding', item, min, max, Object.keys(names))
     for (const [ range, step ] of item.split(',').map(item => item.split('/'))) {
         const [ from, to ] = range === '*' ? [ min, max ] : range.split('-').map(value => names [value]?? +value)
         
@@ -43,7 +42,6 @@ export function decode(item: string, min: number, max: number, names: Record<str
                 throw new Error('Cron invalid element: ' + item)
             }
             
-            console.log('element', f, t, s)
             for (let i = f; i <= t; i += s) {
                 values.push(i)
             }

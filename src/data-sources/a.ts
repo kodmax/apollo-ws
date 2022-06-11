@@ -10,7 +10,8 @@ export const source: DataSourceDefinition<any> = {
     worker: async (b): Promise<any> => {
         return `a`
     },
-    update: push => {
-        setInterval(() => push(Math.random()), 3000)
+    update: (push, err) => {
+        setInterval(() => push(Math.random()), 30000)
+        setTimeout(() => err(new Error('Test Error')), 1000)
     }
 }
