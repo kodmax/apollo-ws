@@ -22,7 +22,7 @@ export class DataSource<T> {
         
         if (definition.update) {
             definition.update(push, e => {
-                this.vent.emit('sys-error', `Push data source <${this.definition.id}> update error: ${e}`, e)
+                this.vent.emit('sys-log', 4, `Push data source <${this.definition.id}> update error: ${e}`, e)
             })
         }
     }
@@ -36,12 +36,12 @@ export class DataSource<T> {
             const cacheIsEmpty = this.cache.isEmpty()
 
             if (!forceRefresh && !cacheIsEmpty && !snapshotExpired) {
-                this.vent.emit('sys-log', `Serving [ Cached ] data source <${this.definition.id}> content.`)
+                this.vent.emit('sys-log', 7, `Serving [ Cached ] data source <${this.definition.id}> content.`)
                 return this.snapshot.content()
     
             } else {
                 const reason = forceRefresh ? 'Refresh Request' : cacheIsEmpty ? 'Cache Miss' : snapshotExpired ? 'Snapshot Expiration' : 'Not sure why'
-                this.vent.emit('sys-log', `Refreshing data source <${this.definition.id}> content due to [ ${reason} ]`)
+                this.vent.emit('sys-log', 7, `Refreshing data source <${this.definition.id}> content due to [ ${reason} ]`)
 
                 return this.promise = new Promise(async (resolve, reject) => {
                     this.resolving = true
@@ -60,7 +60,14 @@ export class DataSource<T> {
                         }
             
                         const content = await this.definition.worker.apply(undefined, aux)
-                        await this.cache.write(content)
+                        try {
+                            await this.cache.write(content)
+
+                        } catch (e) {
+                            this.vent.emit('sys-log', 3, `Write Cache for errored: ${e}`, e)
+
+                            throw e
+                        }
     
                         resolve(this.snapshot.content())
                         this.resolving = false

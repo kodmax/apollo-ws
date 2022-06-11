@@ -4,8 +4,7 @@ import { ApolloWebSocket, Cache } from "./lib";
 
 process.setMaxListeners(0)
 
-new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache')}, async apollo => {
-    apollo.addSysErrorListener((msg, e) => console.error(msg, e))
+ApolloWebSocket.listen({ facility: 16, cache: new Cache(__dirname + '/data-sources/.cache')}, async apollo => {
     apollo.addSysLogListener(msg => console.log(msg))
 
     await apollo.addDataSource(a)
@@ -25,4 +24,4 @@ new ApolloWebSocket({ cache: new Cache(__dirname + '/data-sources/.cache')}, asy
     apollo.addFeed('d', ['a', 'b', 'c'], async (x, y, z) => {
         return [ x, y, z ]
     })
-})    
+})
