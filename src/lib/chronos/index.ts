@@ -1,3 +1,5 @@
+import { decode } from "./decode"
+
 export type Worker = () => Promise<void>
 
 enum JobState {
@@ -10,45 +12,6 @@ type Job = {
     state: JobState,
     when: number[][]
     worker: Worker
-}
-
-const pattern = /^\d+|\*(?:\/\d+)?$/
-export function decode(item: string, max: number, min: number = 0): number[] {
-    const values = []
-
-    for (const element of item.split(',')) {
-        const [ value ] = element.match(pattern)
-
-        if (value [0] === '*') {
-            if (value.length === 1) {
-                for (let i = min; i <= max; i+=1) {
-                    values.push(i)
-                }
-
-            } else {
-                const div = +value.substring(2)
-                if (isNaN(div) || div % 1 !== 0 || div < 1 || div > max) {
-                    throw new Error('Invalid cron entry: ' + item)
-    
-                } else {
-                    for (let i = min; i <= max; i+=div) {
-                        values.push(i)
-                    }
-                }    
-            }
-
-        } else {
-            const v = +value
-            if (isNaN(v) || v % 1 !== 0 || v < min || v > max) {
-                throw new Error('Invalid cron entry: ' + item)
-
-            } else {
-                values.push(v)
-            }
-        }
-    }
-
-    return values
 }
 
 export class Chronos {
@@ -85,7 +48,7 @@ export class Chronos {
         const [ nn, hh, dm, mm, dw ] = when.split(/\s/)
         
         this.jobs.push({
-            when: [decode(nn, 59), decode(hh, 23), decode(dm, 31, 1), decode(mm, 12, 1), decode(dw, 6)],
+            when: [decode(nn, 0, 59), decode(hh, 0, 23), decode(dm, 1, 31), decode(mm, 1, 12), decode(dw, 0, 6)],
             state: JobState.IDLE,
             worker
         })
