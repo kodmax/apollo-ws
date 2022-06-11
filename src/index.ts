@@ -4,7 +4,7 @@ import { ApolloWebSocket, Cache } from "./lib";
 
 process.setMaxListeners(0)
 
-ApolloWebSocket.listen({ facility: 16, cache: new Cache(__dirname + '/data-sources/.cache')}, async apollo => {
+ApolloWebSocket.listen({ pri:false, cache: new Cache(__dirname + '/data-sources/.cache')}, async apollo => {
     apollo.addSysLogListener(msg => console.log(msg))
 
     await apollo.addDataSource(a)

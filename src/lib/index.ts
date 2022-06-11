@@ -11,9 +11,9 @@ export { DataSourceDefinition }
 
 export type ApolloWebSocketOptions = {
     /**
-     * Syslog Facility. Specify to get PRI tags for events messages.
+     * Adds systemd log message priority prefix
      */
-    facility?: number
+    pri?: boolean
 
     /**
      * Provide a Cache instance. The cache provider is available in apollo-ws package
@@ -44,8 +44,8 @@ export class ApolloWebSocket {
     private dataSources: Record<string, DataSource<any>> = {}
     private feeds: Record<string, Feed> = {}
 
-    public static async listen<T>({ cache, port = 3678, facility = -1 }: ApolloWebSocketOptions, init: (instance: ApolloWebSocket) => Promise<T>): Promise<T> {
-        const serv = new ApolloWebSocket({ cache, port, facility })
+    public static async listen<T>({ cache, port = 3678, pri = true }: ApolloWebSocketOptions, init: (instance: ApolloWebSocket) => Promise<T>): Promise<T> {
+        const serv = new ApolloWebSocket({ cache, port, pri })
         const ret = await init(serv)
         await serv.connect()
 
@@ -199,12 +199,7 @@ export class ApolloWebSocket {
 
     public addSysLogListener(cb: (msg: string, e?: Error) => void): void {
         this.vent.addListener('sys-log', (pri: number, msg: string, e?: Error) => {
-            if (this.options.facility > 0) {
-                cb(`<${(this.options.facility << 3) + pri}> ${msg}`, e)
-
-            } else {
-                cb(msg, e)
-            }
-        })
+            cb(this.options.pri ? `<${pri}> ${msg}` : msg, e)
+       })
     }
 }
