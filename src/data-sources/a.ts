@@ -12,6 +12,5 @@ export const source: DataSourceDefinition<any> = {
     },
     update: (push, err) => {
         setInterval(() => push(Math.random()), 30000)
-        setTimeout(() => err(new Error('Test Error')), 1000)
     }
 }

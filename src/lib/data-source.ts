@@ -51,7 +51,7 @@ export class DataSource<T> {
                         if (this.definition.dependencies) {
                             for (const id of this.definition.dependencies) {
                                 if (id in this.sources) {
-                                    aux.push(await this.sources [id].getData())
+                                    aux.push(await this.sources [id].getData(forceRefresh))
                 
                                 } else {
                                     reject(new Error('Data source dependency not registered: ' + id))

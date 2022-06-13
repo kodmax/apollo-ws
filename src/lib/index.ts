@@ -67,23 +67,34 @@ export class ApolloWebSocket {
             this.vent.emit('sys-log', 6, `Client <${client.socket.remoteAddress}> connected.`)
 
             ws.on("message", data => {
-                const msg = data.toString("utf-8")
-                const i = msg.indexOf(' ')
+                const [ cmd, ...params ] = data.toString("utf-8").split(' ')
 
-                if (msg.substring(0, i) === 'subscribe' && i > 0) {
-                    const topics = new Set<string>(msg.substring(i + 1).split(' '))
-                    topics.forEach(topic => client.subscriptions.add(topic))
+                if (cmd === 'subscribe') {
+                    const feeds = new Set<string>(params)
                     
-                    this.vent.emit('sys-log', 6, `Client <${client.socket.remoteAddress}> requests subscription of [ ${[...topics.values()]} ].`)
+                    this.vent.emit('sys-log', 6, `Client <${client.socket.remoteAddress}> requests subscription of [ ${[...feeds.values()]} ].`)
 
-                    const updates: Promise<void>[] = []
-                    for (const feedId of Object.keys(this.feeds).filter(id => topics.has('*') || topics.has(id))) {
-                        this.vent.emit('sys-log', 7, `Feed <${feedId}> request from client <${client.socket.remoteAddress}>`)
-                        updates.push(this.feed(feedId).catch(e => {
+                    for (const feedId of Object.keys(this.feeds).filter(id => feeds.has('*') || feeds.has(id))) {
+                        client.subscriptions.add(feedId)
+                        
+                        this.feed(feedId, {}).catch(e => {
                             this.vent.emit('sys-log', 4, `Feed <${feedId}> request failed: ${e}`, e)
                             return e
-                        }))
+                        })
                     }
+
+                } else if (cmd === 'refresh') {
+                    const feeds = new Set<string>(params)
+
+                    this.vent.emit('sys-log', 6, `Client <${client.socket.remoteAddress}> requests refresh of [ ${[...feeds.values()]} ].`)
+
+                    for (const feedId of Object.keys(this.feeds).filter(id => client.subscriptions.has(id) && feeds.has(id))) {
+                        this.feed(feedId, { forceRefresh: true }).catch(e => {
+                            this.vent.emit('sys-log', 4, `Feed <${feedId}> request failed: ${e}`, e)
+                            return e
+                        })
+                    }
+
                 }
             })
 
@@ -166,14 +177,17 @@ export class ApolloWebSocket {
         }
     }
 
-    private async feed(feedId: string): Promise<any> {
+    private async feed(feedId: string, { forceRefresh = false }: { forceRefresh?: boolean }): Promise<any> {
         const feed = this.feeds [feedId]
-        const data = await Promise.all(feed.sources.map(id => this.dataSources [id].getData()))
+        const data = await Promise.all(feed.sources.map(id => this.dataSources [id].getData(forceRefresh)))
         const content = await feed.cb ? feed.cb.apply(undefined, data) : data [0]
 
         if (typeof content !== 'undefined') {
-            this.vent.emit('sys-log', 7, `Feed <${feedId}> update successful`)
+            this.vent.emit('sys-log', 7, `Feed <${feedId}> update successful.`)
             this.vent.emit('feed', feedId, content)
+        
+        } else {
+            this.vent.emit('sys-log', 4, `Feed <${feedId}> callback returned no content.`)
         }
     }
 
@@ -185,7 +199,7 @@ export class ApolloWebSocket {
                 try {
                     this.vent.emit('sys-log', 7, `Feed <${feedId}> update attempt due to data source <${sourceId}> update`)
 
-                    const content: any = await this.feed(feedId)
+                    const content: any = await this.feed(feedId, {})
                     if (typeof content !== 'undefined') {
                         this.vent.emit('feed', feedId, content)
                     }
