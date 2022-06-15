@@ -32,15 +32,14 @@ export class DataSource<T> {
             return this.promise
 
         } else {
-            const snapshotExpired = this.definition.expired(this.snapshot)
-            const cacheIsEmpty = this.cache.isEmpty()
+            const snapshotExpired = this.cache.isEmpty() || this.definition.expired(this.snapshot)
 
-            if (!forceRefresh && !cacheIsEmpty && !snapshotExpired) {
+            if (!forceRefresh && !snapshotExpired) {
                 this.vent.emit('sys-log', 7, `Serving [ Cached ] data source <${this.definition.id}> content.`)
                 return this.snapshot.content()
     
             } else {
-                const reason = forceRefresh ? 'Refresh Request' : cacheIsEmpty ? 'Cache Miss' : snapshotExpired ? 'Snapshot Expiration' : 'Not sure why'
+                const reason = forceRefresh ? 'Refresh Request' : 'Cache Miss'
                 this.vent.emit('sys-log', 7, `Refreshing data source <${this.definition.id}> content due to [ ${reason} ]`)
 
                 return this.promise = new Promise(async (resolve, reject) => {
