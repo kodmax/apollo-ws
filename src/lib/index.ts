@@ -211,9 +211,11 @@ export class ApolloWebSocket {
         })    
     }
 
-    public addSysLogListener(cb: (msg: string, e?: Error) => void): void {
+    public addSysLogListener(cb: (msg: string, e?: Error) => void, maxPriority: number = 6, minPriority: number = 0): void {
         this.vent.addListener('sys-log', (pri: number, msg: string, e?: Error) => {
-            cb(this.options.pri ? `<${pri}> ${msg}` : msg, e)
+            if (pri <= maxPriority && pri >= minPriority) {
+                cb(this.options.pri ? `<${pri}> ${msg}` : msg, e)
+            }
        })
     }
 }
